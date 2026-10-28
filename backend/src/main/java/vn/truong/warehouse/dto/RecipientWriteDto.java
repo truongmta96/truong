@@ -7,8 +7,8 @@ import vn.truong.warehouse.enums.*;
 import jakarta.validation.constraints.*;
 
 public record RecipientWriteDto(
-    @NotNull @Size(max = 60) String code,
-    @NotNull @Size(max = 200) String fullName,
+    @NotBlank @Size(max = 60) String code,
+    @NotBlank @Size(max = 200) String fullName,
     @Size(max = 200) String department,
     @Size(max = 30) String phone,
     @NotNull Boolean isActive

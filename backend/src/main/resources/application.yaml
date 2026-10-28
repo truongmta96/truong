@@ -17,3 +17,6 @@ spring:
         enabled: false
       host: ${WAREHOUSE_REDIS_HOST:127.0.0.1}
       port: ${WAREHOUSE_REDIS_PORT:6379}
+server:
+  address: ${WAREHOUSE_BIND_ADDRESS:127.0.0.1}
+  port: ${WAREHOUSE_PORT:8080}

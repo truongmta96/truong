@@ -9,6 +9,6 @@ import jakarta.validation.constraints.*;
 public record MaterialSerialWriteDto(
     @NotNull Long materialId,
     Long lotId,
-    @NotNull @Size(max = 150) String serialNumber,
+    @NotBlank @Size(max = 150) String serialNumber,
     LocalDate expiresOn
 ) {}

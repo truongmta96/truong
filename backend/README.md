@@ -33,7 +33,7 @@ Mỗi bảng có Entity, response DTO, Mapper, JpaRepository và Service đọc 
 
 Service có create/update: AppRole, UserRole, UnitOfMeasure, MaterialCategory, Material, MaterialUnit, Supplier, Recipient, MaterialLot, MaterialSerial. Tạo Material khởi tạo InventoryBalance bằng 0 cùng transaction. Khóa ghép được giữ nguyên khi update; create khóa ghép đã có bị từ chối.
 
-Service AppUser, InventoryPolicy, StockDocument, StockDocumentLine, StockLineAllocation, DocumentAction, StockMovement, InventoryBalance, CostAllocation, AuditLog chỉ đọc. Chưa có API controller, xác thực/phân quyền, đăng ký/đổi mật khẩu, quy trình duyệt/ghi sổ hay tính giá. Đây là tầng persistence và service nền tảng, chưa phải hệ thống kho hoàn chỉnh. Repository là API nội bộ, không tự công khai ra HTTP; không gọi save trực tiếp để bỏ qua quy trình nghiệp vụ.
+Service AppUser, InventoryPolicy, StockDocument, StockDocumentLine, StockLineAllocation, DocumentAction, StockMovement, InventoryBalance, CostAllocation, AuditLog chỉ đọc. Đã có API REST cho giao diện quản lý (xem phần bên dưới). Chưa có xác thực/phân quyền, đăng ký/đổi mật khẩu, quy trình duyệt/ghi sổ hay tính giá. Đây là tầng persistence và service nền tảng, chưa phải hệ thống kho hoàn chỉnh. Repository là API nội bộ; controller chỉ công khai các thao tác được liệt kê; không gọi save trực tiếp để bỏ qua quy trình nghiệp vụ.
 
 ## Quy tắc mapping
 
@@ -68,3 +68,18 @@ WarehouseIntegrationTest dùng MySQL thật và transaction rollback dữ liệu
 ## Phần nghiệp vụ cần triển khai tiếp
 
 Các ghi chú trong SQL về Python/Django là ngữ cảnh tài liệu; backend này triển khai bằng Java. DDL không thực thi nghiệp vụ. Chưa triển khai kiểm tra đơn vị cơ sở/hệ số 1, tổng allocation, flag lô/serial/hạn dùng, chuyển trạng thái, phân quyền, chốt chính sách giá, khóa document/balance theo thứ tự, chống ghi sổ lặp và phân bổ giá vốn. Service ghi sổ sau này cần thực hiện toàn bộ trong một transaction; chỉ mở thao tác ghi cho phiếu/sổ sau khi các điều kiện đó có kiểm thử. Kiểm thử hiện tại không chứng minh quy trình nhập/xuất kho hoàn chỉnh.
+
+## API phục vụ giao diện
++
++API mặc định chỉ lắng nghe `127.0.0.1:8080`. Chưa có đăng nhập/phân quyền; chỉ dùng cục bộ để phát triển. Không mở bind address ra mạng công cộng. Vite chuyển tiếp `/api` tới backend, không cần mở CORS toàn cục.
++
++- GET `/api/dashboard`: số vật tư, giá trị tồn, phiếu chờ duyệt, tồn dưới ngưỡng và phiếu gần đây từ database.
++- GET `/api/{resource}?page=0&size=20`: phân trang ổn định gồm content, number, totalPages, totalElements; size 1..200, sort theo khóa.
++- GET `/api/{resource}/{id}`: chi tiết. material-units dùng `/{materialId}/{unitId}`; user-roles dùng `/{userId}/{roleId}`.
++- POST `/api/{resource}`, PUT `/api/{resource}/{id}`: áp dụng cho materials, categories, units, material-units, suppliers, recipients, lots, serials.
++- users, roles, user-roles, documents, document-lines, line-allocations, document-actions, balances, movements, cost-allocations, inventory-policies, audit-logs chỉ GET. Không cung cấp DELETE.
++- GET `/api/stock/materials?after=0&limit=20` và `/api/stock/trace/{materialId}` đọc hai view.
++
++Audit API chỉ trả metadata; oldData/newData được bỏ nội dung để tránh công khai dữ liệu nhạy cảm từng được ghi vào JSON. Lỗi trả message và fields (validation) thay vì SQL hoặc exception chi tiết.
++
++`WarehouseApiTest` kiểm tra API tạo/sửa, dữ liệu không hợp lệ, mã trùng, phân trang, bản ghi không tồn tại, endpoint chỉ đọc và lọc audit JSON. Kết hợp với 5 kiểm thử persistence hiện có thành 8 ca tích hợp.

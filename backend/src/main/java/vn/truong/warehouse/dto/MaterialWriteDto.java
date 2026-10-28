@@ -7,8 +7,8 @@ import vn.truong.warehouse.enums.*;
 import jakarta.validation.constraints.*;
 
 public record MaterialWriteDto(
-    @NotNull @Size(max = 60) String code,
-    @NotNull @Size(max = 255) String name,
+    @NotBlank @Size(max = 60) String code,
+    @NotBlank @Size(max = 255) String name,
     Long categoryId,
     @NotNull Long baseUnitId,
     @NotNull Boolean trackLot,

@@ -7,6 +7,6 @@ import vn.truong.warehouse.enums.*;
 import jakarta.validation.constraints.*;
 
 public record MaterialCategoryWriteDto(
-    @NotNull @Size(max = 40) String code,
-    @NotNull @Size(max = 150) String name
+    @NotBlank @Size(max = 40) String code,
+    @NotBlank @Size(max = 150) String name
 ) {}

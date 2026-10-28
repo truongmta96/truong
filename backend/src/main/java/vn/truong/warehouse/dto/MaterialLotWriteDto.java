@@ -8,7 +8,7 @@ import jakarta.validation.constraints.*;
 
 public record MaterialLotWriteDto(
     @NotNull Long materialId,
-    @NotNull @Size(max = 100) String lotCode,
+    @NotBlank @Size(max = 100) String lotCode,
     LocalDate manufacturedOn,
     LocalDate expiresOn
 ) {}

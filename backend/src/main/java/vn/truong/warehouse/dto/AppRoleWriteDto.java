@@ -7,6 +7,6 @@ import vn.truong.warehouse.enums.*;
 import jakarta.validation.constraints.*;
 
 public record AppRoleWriteDto(
-    @NotNull @Size(max = 40) String code,
-    @NotNull @Size(max = 100) String name
+    @NotBlank @Size(max = 40) String code,
+    @NotBlank @Size(max = 100) String name
 ) {}

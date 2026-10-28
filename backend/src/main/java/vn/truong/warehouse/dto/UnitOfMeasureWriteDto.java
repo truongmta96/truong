@@ -7,6 +7,6 @@ import vn.truong.warehouse.enums.*;
 import jakarta.validation.constraints.*;
 
 public record UnitOfMeasureWriteDto(
-    @NotNull @Size(max = 30) String code,
-    @NotNull @Size(max = 100) String name
+    @NotBlank @Size(max = 30) String code,
+    @NotBlank @Size(max = 100) String name
 ) {}
