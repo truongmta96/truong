@@ -1,5 +1,7 @@
+/** Kiểm thử các trang quản lý sau đăng nhập. Cần tài khoản ADMIN kiểm thử được cung cấp riêng; không tự tạo hoặc nâng quyền tài khoản. */
 import {test,expect} from '@playwright/test';
 
+/** Đăng nhập ADMIN trước mỗi ca; bỏ qua rõ ràng khi chưa có thông tin tài khoản kiểm thử. */
 test.beforeEach(async({page})=>{
  test.skip(!process.env.WAREHOUSE_E2E_USERNAME || !process.env.WAREHOUSE_E2E_PASSWORD, 'Set credentials for a dedicated ADMIN test account.');
  await page.goto('/');
@@ -9,6 +11,7 @@ test.beforeEach(async({page})=>{
  await expect(page.getByRole('heading',{name:'Mọi thứ trong tầm kiểm soát.'})).toBeVisible();
 });
 
+/** Mở tổng quan và lần lượt 20 trang bằng dữ liệu backend thật, kiểm tra không có lỗi khi hiển thị. */
 test('overview and all management pages render with real API data',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');
@@ -25,6 +28,7 @@ test('overview and all management pages render with real API data',async({page})
  expect(errors).toEqual([]);
 });
 
+/** Tạo và sửa nhóm thử nghiệm, xem chi tiết rồi kiểm tra bộ lọc trên trang. */
 test('create, edit, detail and filter a category through real backend',async({page})=>{
  const code='UI-E2E-'+Date.now();
  await page.goto('/#categories');
@@ -49,6 +53,7 @@ test('create, edit, detail and filter a category through real backend',async({pa
  await expect(page.getByRole('heading',{name:'Không có kết quả phù hợp'})).toBeVisible();
 });
 
+/** Giả lập API mất kết nối, kiểm tra thông báo lỗi và khả năng tải lại dữ liệu khi API hoạt động trở lại. */
 test('failure is visible and can be retried without fake data',async({page})=>{
  await page.route('**/api/suppliers?*',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Máy chủ tạm thời không sẵn sàng.'})}));
  await page.goto('/#suppliers');
@@ -58,6 +63,7 @@ test('failure is visible and can be retried without fake data',async({page})=>{
  await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
+/** Kiểm tra menu, mở/đóng form bằng bàn phím và bố cục trên điện thoại. */
 test('mobile menu and accessible modal work without horizontal page overflow',async({page})=>{
  await page.setViewportSize({width:390,height:844});
  await page.goto('/');

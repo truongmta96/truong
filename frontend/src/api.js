@@ -1,4 +1,11 @@
+/**
+ * Tập trung giao tiếp HTTP và cách hiển thị dữ liệu để các trang không lặp lại xử lý cookie, CSRF, lỗi và định dạng tiếng Việt.
+ */
+// Token CSRF chỉ giữ trong bộ nhớ tab; cookie phiên do trình duyệt quản lý.
 let csrf;
+/**
+ * Gửi yêu cầu JSON tới backend cùng cookie phiên. Trước thao tác ghi, lấy token CSRF và gửi đúng header; xóa token đã cũ sau khi phiên thay đổi. Lỗi 401 ở API quản lý phát tín hiệu quay về đăng nhập; không tự gửi lại thao tác ghi để tránh ghi trùng.
+ */
 export async function api(path, options = {}) {
   const method=(options.method || 'GET').toUpperCase();
   const headers={'Content-Type':'application/json',...options.headers};
@@ -17,7 +24,11 @@ export async function api(path, options = {}) {
   if(['auth/login','auth/logout','auth/password'].includes(path))csrf=undefined;
   return body;
 }
+// Dịch mã trạng thái/nghiệp vụ lưu bằng tiếng Anh sang nhãn tiếng Việt.
 export const labels = {DRAFT:'Bản nháp', PENDING:'Chờ duyệt', APPROVED:'Đã duyệt', REJECTED:'Từ chối', POSTED:'Đã ghi sổ', CANCELLED:'Đã hủy', RECEIPT:'Nhập kho', ISSUE:'Xuất kho', OPENING:'Tồn đầu kỳ', ADJUST_IN:'Điều chỉnh tăng', ADJUST_OUT:'Điều chỉnh giảm', UNSET:'Chưa thiết lập', MOVING_AVERAGE:'Bình quân di động', SPECIFIC:'Đích danh', ON_APPROVAL:'Khi phê duyệt', ON_CONFIRMATION:'Khi xác nhận', SUBMIT:'Gửi duyệt', WITHDRAW:'Rút phiếu', APPROVE:'Phê duyệt', REJECT:'Từ chối', POST:'Ghi sổ', CANCEL:'Hủy phiếu'};
+/**
+ * Chuyển dữ liệu thành chữ hiển thị tiếng Việt: số thập phân, ngày, trạng thái và đúng/sai. DATETIME không có múi giờ từ backend được hiểu là UTC rồi hiển thị theo giờ Việt Nam.
+ */
 export function format(value, field = {}) {
   if (value === null || value === undefined || value === '') return '—';
   if (typeof value === 'boolean') return field.key === 'isActive' ? (value ? 'Đang dùng' : 'Ngừng dùng') : (value ? 'Có' : 'Không');

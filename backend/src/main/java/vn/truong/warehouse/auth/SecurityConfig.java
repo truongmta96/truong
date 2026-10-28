@@ -13,12 +13,30 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 import org.springframework.http.HttpMethod;
 import vn.truong.warehouse.repository.AppUserRepository;
 
+/**
+ * Thiết lập xác thực bằng phiên và kiểm tra quyền ở backend. VIEWER/APPROVER được đọc dữ liệu kho; CLERK/ADMIN được ghi danh mục; nhóm API quản trị chỉ dành cho ADMIN.
+ */
 @Configuration
 public class SecurityConfig {
+    /**
+     * Tạo bộ băm/đối chiếu mật khẩu BCrypt với hệ số xử lý 12. Không mã hóa theo cách có thể giải ngược ra mật khẩu thô.
+     */
     @Bean PasswordEncoder passwordEncoder(){return new BCryptPasswordEncoder(12);}
+    /**
+     * Lưu và khôi phục thông tin đăng nhập trong phiên HTTP phía backend; trình duyệt chỉ giữ cookie định danh phiên.
+     */
     @Bean SecurityContextRepository contexts(){return new HttpSessionSecurityContextRepository();}
+    /**
+     * Cung cấp tên đăng nhập, chuỗi băm, trạng thái khóa và vai trò cho Spring Security khi xác minh đăng nhập.
+     */
     @Bean UserDetailsService userDetails(AppUserRepository users,AuthService accounts){return username->{var u=users.findByUsername(username).orElseThrow(()->new UsernameNotFoundException("Invalid credentials"));return User.withUsername(u.getUsername()).password(u.getPasswordHash()).disabled(!Boolean.TRUE.equals(u.getIsActive())).roles(accounts.roles(u.getId()).toArray(String[]::new)).build();};}
+    /**
+     * Kết hợp nguồn tài khoản và bộ kiểm tra BCrypt để xác minh thông tin đăng nhập.
+     */
     @Bean AuthenticationManager authenticationManager(UserDetailsService service,PasswordEncoder encoder){var provider=new DaoAuthenticationProvider(service);provider.setPasswordEncoder(encoder);return new ProviderManager(provider);}
+    /**
+     * Khai báo thứ tự kiểm tra quyền API, bật CSRF, xử lý lỗi 401/403 và đăng xuất. Quyền thực sự được kiểm tra ở backend, không chỉ bằng việc ẩn nút trên giao diện.
+     */
     @Bean SecurityFilterChain security(HttpSecurity http,SecurityContextRepository contexts,AppUserRepository users,AuthService accounts)throws Exception{
         http.securityContext(c->c.securityContextRepository(contexts))
             .csrf(c->c.csrfTokenRepository(new HttpSessionCsrfTokenRepository()))
@@ -35,5 +53,9 @@ public class SecurityConfig {
             .addFilterBefore(new SessionAccountFilter(users,accounts),AnonymousAuthenticationFilter.class);
         return http.build();
     }
+    /**
+     * Ghi mã HTTP và thông báo JSON tiếng Việt cho yêu cầu không được xác thực, bị từ chối hoặc vừa đăng xuất.
+     * @param res Phản hồi HTTP gửi về trình duyệt.
+     */
     private static void json(jakarta.servlet.http.HttpServletResponse res,int status,String message)throws java.io.IOException{res.setStatus(status);res.setContentType("application/json;charset=UTF-8");new com.fasterxml.jackson.databind.ObjectMapper().writeValue(res.getWriter(),java.util.Map.of("message",message));}
 }

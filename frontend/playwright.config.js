@@ -1,3 +1,4 @@
+/** Cấu hình trình duyệt Chromium để chạy test giao diện; khởi động Vite nếu chưa có và dùng một luồng để tránh các test cùng sửa dữ liệu. */
 import { defineConfig } from '@playwright/test';
 export default defineConfig({
  testDir: './tests', workers: 1, retries: 0, timeout: 30000,

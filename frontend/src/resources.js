@@ -1,3 +1,6 @@
+/**
+ * Bản mô tả 20 trang quản lý dùng bởi ResourcePage/Editor. key là đường dẫn API và tên trang sau dấu #; group là nhóm menu; columns là các cột hiển thị; fields mô tả dữ liệu đọc; writeFields là các trường được phép nhập; ids là các thành phần khóa. ref chỉ danh mục gợi ý cho khóa ngoại; required/max/min mô tả giới hạn form. Việc cấu hình nút/form không thay thế kiểm tra quyền và ràng buộc ở backend.
+ */
 export const resources = [
   {
     "key": "materials",

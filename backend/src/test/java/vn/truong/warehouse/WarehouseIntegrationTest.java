@@ -17,6 +17,9 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.*;
 
+/**
+ * Kiểm thử mapping JPA, các ràng buộc MySQL, dữ liệu tính tự động và service nền tảng. Dữ liệu của mỗi ca kiểm thử được rollback.
+ */
 @SpringBootTest
 @Transactional
 class WarehouseIntegrationTest {
@@ -30,12 +33,18 @@ class WarehouseIntegrationTest {
     @Autowired AppUserMapper users;
     @Autowired ObjectMapper json;
 
+    /**
+     * Tạo vật tư kiểm thử với đơn vị CHIEC đã seed, giúp các ca test sử dụng cùng dữ liệu hợp lệ.
+     */
     private MaterialDto material() {
         Long base = jdbc.queryForObject("SELECT id FROM unit_of_measure WHERE code='CHIEC'", Long.class);
         return materials.create(new MaterialWriteDto("TEST-" + UUID.randomUUID(), "Test material", null, base,
             false, false, false, false, BigDecimal.ZERO, true));
     }
 
+    /**
+     * Kiểm tra tạo vật tư sinh số dư bằng 0, đọc được khóa ghép đơn vị và từ chối đổi khóa ghép khi cập nhật.
+     */
     @Test void materialCreatesZeroBalanceAndCompositeUnitCanBeRead() {
         var m = material();
         var balance = balances.findById(m.id()).orElseThrow();
@@ -47,6 +56,9 @@ class WarehouseIntegrationTest {
         assertThat(views.findMaterialStock(0, 200)).anyMatch(row -> row.materialId().equals(m.id()) && row.quantityOnHand().signum() == 0);
     }
 
+    /**
+     * Đọc thử đủ 20 entity và kiểm tra vai trò seed để phát hiện sai mapping hoặc thiếu dữ liệu khởi tạo.
+     */
     @Test void allTwentyEntityMappingsCanReadTheirTables() {
         for (var type : em.getMetamodel().getEntities()) {
             em.createQuery("select e from " + type.getName() + " e").setMaxResults(1).getResultList();
@@ -55,6 +67,9 @@ class WarehouseIntegrationTest {
         assertThat(jdbc.queryForObject("SELECT count(*) FROM app_role", Long.class)).isEqualTo(4);
     }
 
+    /**
+     * Kiểm tra MySQL tự tính số lượng cơ sở và ràng buộc CHECK từ chối tồn tối thiểu âm.
+     */
     @Test void databaseGeneratesRoundedBaseQuantityAndChecksConstraints() {
         var m = material();
         units.create(new MaterialUnitWriteDto(m.id(), m.baseUnitId(), BigDecimal.ONE, true, true));
@@ -70,12 +85,18 @@ class WarehouseIntegrationTest {
             .satisfies(ex -> assertThat(((java.sql.SQLException) ex.getCause()).getErrorCode()).isEqualTo(3819));
     }
 
+    /**
+     * Kiểm tra JSON của entity và DTO không chứa mật khẩu đã băm.
+     */
     @Test void passwordHashIsNotExposedInEntityOrResponseDto() throws Exception {
         var user = new AppUser(); user.setPasswordHash("do-not-expose");
         assertThat(json.writeValueAsString(user)).doesNotContain("do-not-expose", "passwordHash");
         assertThat(json.writeValueAsString(users.toDto(user))).doesNotContain("passwordHash");
     }
 
+    /**
+     * Kiểm tra DTO thiếu mã bị từ chối, truy vấn trace rỗng và danh sách vật tư phân trang vẫn hoạt động.
+     */
     @Test void dtoValidationAndImmutableCompositeKeysAreEnforced() {
         assertThatThrownBy(() -> materials.create(new MaterialWriteDto(null, "bad", null, 1L, false, false, false, false, BigDecimal.ZERO, true)))
             .isInstanceOf(jakarta.validation.ConstraintViolationException.class);

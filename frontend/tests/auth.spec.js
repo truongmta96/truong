@@ -1,5 +1,7 @@
+/** Kiểm thử tài khoản bằng trình duyệt thật. Dữ liệu e2e-auth-* chỉ dành cho database kiểm thử. */
 import {test,expect} from '@playwright/test';
 const password='Browser-test-password-123!';
+/** Tạo tài khoản VIEWER qua giao diện và chờ thông báo đăng ký thành công. */
 async function register(page){
  const username='e2e-auth-'+Date.now()+'-'+Math.random().toString(36).slice(2,6);
  await page.goto('/');await page.getByRole('button',{name:'Đăng ký',exact:true}).click();
@@ -11,12 +13,14 @@ async function register(page){
  await expect(page.getByRole('status')).toContainText('Đăng ký thành công');
  return username;
 }
+/** Nhập thông tin và gửi form đăng nhập; ca kiểm thử gọi hàm sẽ xác nhận kết quả. */
 async function login(page,username,pwd=password){
  await page.getByLabel('Tên đăng nhập',{exact:true}).fill(username);
  await page.getByLabel('Mật khẩu',{exact:true}).fill(pwd);
  await page.getByRole('button',{name:'Đăng nhập',exact:true}).last().click();
 }
 
+/** Kiểm tra cả vòng đời tài khoản: tạo mới, sai mật khẩu, giữ phiên khi reload, đổi họ tên, đổi mật khẩu và đăng xuất. */
 test('register, login, persistent session, edit own profile, change password and logout',async({page})=>{
  const username=await register(page);
  await login(page,username,'wrong-password');await expect(page.getByRole('alert')).toContainText('không đúng');
@@ -39,6 +43,7 @@ test('register, login, persistent session, edit own profile, change password and
  await page.reload();await expect(page.getByRole('heading',{name:'Chào mừng trở lại.'})).toBeVisible();
 });
 
+/** Kiểm tra VIEWER không thấy nút sửa hoặc quản trị; truy cập trực tiếp API quản trị cũng bị chặn. */
 test('viewer cannot edit catalog or visit administration',async({page})=>{
  const username=await register(page);await login(page,username);
  await expect(page.getByRole('heading',{name:'Mọi thứ trong tầm kiểm soát.'})).toBeVisible();
@@ -49,6 +54,7 @@ test('viewer cannot edit catalog or visit administration',async({page})=>{
  expect((await page.request.get('/api/users')).status()).toBe(403);
 });
 
+/** Kiểm tra form điện thoại báo mật khẩu xác nhận sai và không làm trang tràn ngang. */
 test('mobile registration checks password confirmation and has no page overflow',async({page})=>{
  await page.setViewportSize({width:390,height:844});await page.goto('/');
  await page.getByRole('button',{name:'Đăng ký',exact:true}).click();

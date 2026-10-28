@@ -3,11 +3,20 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
+/**
+ * Tổng hợp số liệu thật từ MySQL cho trang tổng quan: danh mục, giá trị tồn, phiếu chờ duyệt và vật tư dưới ngưỡng.
+ */
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {
     private final JdbcTemplate jdbc;
+    /**
+     * Nhận các thành phần phụ thuộc qua hàm tạo để Spring kết nối lớp này với tầng xử lý bên dưới.
+     */
     public DashboardController(JdbcTemplate jdbc) { this.jdbc = jdbc; }
+    /**
+     * Đọc số liệu tổng quan trong transaction chỉ đọc. Giá trị tồn và cảnh báo thiếu hàng lấy từ view tổng hợp biến động đã ghi sổ.
+     */
     @GetMapping
     @Transactional(readOnly=true)
     public Map<String,Object> summary() {

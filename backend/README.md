@@ -107,3 +107,7 @@ Audit API chỉ trả metadata; oldData/newData được bỏ nội dung để t
 +Cookie mặc định dành cho HTTP cục bộ (HttpOnly, SameSite=Lax). Khi triển khai qua HTTPS đặt WAREHOUSE_COOKIE_SECURE=true. Không dùng cấu hình phát triển làm cấu hình production; cần thêm giới hạn tần suất tại reverse proxy, quản lý bí mật và phương án lưu phiên phù hợp khi chạy nhiều instance. Chưa có quên mật khẩu, xác minh email hoặc màn hình quản trị cấp quyền.
 +
 +AuthenticationTest có 5 ca tích hợp thực hiện đăng ký/hash/quyền mặc định, CSRF thực, đổi session ID lúc login, cập nhật hồ sơ chỉ chính mình, thay đổi/quyền bị thu hồi, khóa tài khoản và đổi mật khẩu vô hiệu phiên khác. Kết hợp 8 ca API/persistence trước đó thành 13 ca. Các test database được rollback.
+
+## Hướng dẫn đọc source bằng tiếng Việt
+
+Xem [luồng xử lý, ý nghĩa từng tầng và các thuật ngữ trong source](../docs/HUONG_DAN_DOC_SOURCE.md). Các class/method và hàm giao diện đã có chú thích tiếng Việt ngay trong mã.

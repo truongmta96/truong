@@ -1,3 +1,6 @@
+/**
+ * Các màn hình quản lý và bố cục dùng chung. Luồng chính: kiểm tra phiên → Workspace → chọn trang → đọc/ghi qua api.js. Tên hàm tiếng Anh được giữ để mã và liên kết hiện có không bị thay đổi.
+ */
 import React, {useEffect, useRef, useState} from 'react';
 import { Boxes, LayoutDashboard, Package, Users, ArrowLeftRight, Layers3, ScanLine, Settings2, Search, Plus, ChevronRight, ChevronLeft, ArrowUpRight, X, Menu, RotateCw, AlertCircle, Check, Eye, Pencil, FileText, Download, CircleHelp, ShieldCheck, Warehouse, Filter, CircleDot } from 'lucide-react';
 import { resources } from './resources';
@@ -13,12 +16,22 @@ const groups = [
   {key:'trace',label:'Lô & số serial',icon:ScanLine},
   {key:'admin',label:'Quản trị',icon:Settings2},
 ];
+// Đọc trang hiện tại từ URL; nếu chưa chọn thì mở tổng quan.
 const initialPage = () => location.hash.slice(1) || 'dashboard';
 
+/**
+ * Điểm điều khiển đăng nhập của giao diện. Kiểm tra phiên khi mở trang; chỉ hiển thị không gian quản lý khi có tài khoản hợp lệ.
+ */
 export default function App() {
   const [user,setUser]=useState(null),[loading,setLoading]=useState(true),[failure,setFailure]=useState(''),[loginMessage,setLoginMessage]=useState('');
+  /**
+   * Đọc hồ sơ của phiên hiện tại. HTTP 401 đưa về đăng nhập; lỗi máy chủ/kết nối được hiển thị để người dùng thử lại.
+   */
   async function check(){setLoading(true);setFailure('');try{setUser(await api('auth/me'));}catch(e){if(e.status!==401)setFailure(e.message);}finally{setLoading(false);}}
   useEffect(()=>{check();const expired=()=>{setUser(null);setLoginMessage('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');};window.addEventListener('session-expired',expired);return()=>window.removeEventListener('session-expired',expired);},[]);
+  /**
+   * Đăng xuất bằng API; nếu vừa đổi mật khẩu thì phiên đã bị backend hủy nên chỉ cần chuyển màn hình. Lỗi mạng không được coi là đã đăng xuất thành công.
+   */
   async function logout(message){if(message){setUser(null);setLoginMessage(message);return;}try{await api('auth/logout',{method:'POST'});setUser(null);setLoginMessage('Bạn đã đăng xuất.');}catch(e){setFailure(e.message);}}
   if(loading)return <div className="auth-loading" role="status"><RotateCw className="spin"/>Đang kiểm tra phiên đăng nhập…</div>;
   if(!user&&failure)return <div className="auth-loading"><ErrorBox message={failure} retry={check}/></div>;
@@ -26,6 +39,9 @@ export default function App() {
   return <>{failure&&<div className="session-alert" role="alert">{failure}<button onClick={()=>setFailure('')}>Đóng</button></div>}<Workspace user={user} onUpdate={setUser} onLogout={logout}/></>;
 }
 
+/**
+ * Bố cục sau đăng nhập: menu, thanh tài khoản, các trang quản lý và thông báo. Ẩn nút ghi hoặc menu quản trị theo vai trò; backend vẫn là nơi quyết định quyền thực sự.
+ */
 function Workspace({user,onUpdate,onLogout}) {
   const [route,setRoute] = useState(initialPage);
   const [mobile,setMobile] = useState(false);
@@ -38,7 +54,13 @@ function Workspace({user,onUpdate,onLogout}) {
   const group = resource?.group || 'dashboard';
   useEffect(()=>{const handler=()=>setRoute(initialPage()); window.addEventListener('hashchange',handler); return ()=>window.removeEventListener('hashchange',handler);},[]);
   useEffect(()=>{if (!notice) return; const id=setTimeout(()=>setNotice(''),4500); return ()=>clearTimeout(id);},[notice]);
+  /**
+   * Đổi phần sau dấu # trong địa chỉ để chuyển trang và đóng menu trên điện thoại.
+   */
   function navigate(key) { location.hash=key; setMobile(false); }
+  /**
+   * Tải tối đa 200 bản ghi mỗi danh mục để gợi ý ID liên kết trong form. Danh mục không có quyền đọc hoặc tải lỗi được để trống; người dùng vẫn có thể nhập ID hợp lệ.
+   */
   async function refreshReferences() {
     const keys=['materials','units','categories','suppliers','recipients','users','roles','lots','serials'];
     const entries=await Promise.all(keys.map(async key=>{try { const data=await api(`${key}?size=200`);return [key,{rows:data.content,total:data.totalElements}];} catch{return [key,{rows:[],total:0}];}}));
@@ -63,8 +85,14 @@ function Workspace({user,onUpdate,onLogout}) {
   </div>;
 }
 
+/**
+ * Trang tổng quan lấy số liệu thật từ API: số vật tư, giá trị tồn, phiếu chờ duyệt và cảnh báo thiếu hàng. Không thay lỗi tải dữ liệu bằng số liệu mẫu.
+ */
 function Dashboard({navigate}) {
   const [data,setData]=useState(null),[error,setError]=useState(''),[busy,setBusy]=useState(false);
+  /**
+   * Tải lại số liệu tổng quan, cập nhật trạng thái đang tải và giữ thông báo lỗi để người dùng thử lại.
+   */
   async function load(){setBusy(true);setError('');try{setData(await api('dashboard'));}catch(e){setError(e.message);}finally{setBusy(false);}}
   useEffect(()=>{load();},[]);
   const cards=[{label:'Vật tư trong danh mục',value:data?.materials,icon:Package,color:'green',link:'materials',foot:'Theo dõi toàn bộ vật tư'}, {label:'Giá trị tồn kho',value:data?new Intl.NumberFormat('vi-VN',{maximumFractionDigits:0}).format(data.inventoryValue):null,unit:'₫',icon:Layers3,color:'blue',link:'balances',foot:'Từ biến động đã ghi sổ'}, {label:'Phiếu chờ phê duyệt',value:data?.pending,icon:FileText,color:'orange',link:'documents',foot:'Cần kiểm tra và xử lý'}, {label:'Dưới mức tồn tối thiểu',value:data?.lowStock,icon:AlertCircle,color:'red',link:'balances',foot:'Vật tư cần được bổ sung'}];
@@ -78,15 +106,24 @@ function Dashboard({navigate}) {
   </>;
 }
 
+/**
+ * Trang danh sách dùng chung cho 20 loại dữ liệu. Đọc cấu hình từ resources.js để dựng cột, form, chi tiết và nút thao tác; tìm/lọc chỉ áp dụng cho trang đang xem.
+ */
 function ResourcePage({resource:r,references,onSaved}) {
   const [page,setPage]=useState(0),[data,setData]=useState(null),[busy,setBusy]=useState(true),[error,setError]=useState(''),[search,setSearch]=useState(''),[active,setActive]=useState('all');
   const [editor,setEditor]=useState(null),[detail,setDetail]=useState(null),[reload,setReload]=useState(0);
   const tabs=resources.filter(x=>x.group===r.group);
   const latest=useRef(0);
   useEffect(()=>{const id=++latest.current;setBusy(true);setError('');api(`${r.key}?page=${page}&size=20`).then(d=>{if(id===latest.current)setData(d);}).catch(e=>{if(id===latest.current)setError(e.message);}).finally(()=>{if(id===latest.current)setBusy(false);});return()=>{latest.current++;};},[r.key,page,reload]);
+  /**
+   * Đổi ID liên kết thành tên dễ đọc nếu có trong dữ liệu gợi ý; nếu không thì hiển thị ID gốc. Các kiểu ngày, số, trạng thái dùng bộ định dạng chung.
+   */
   function display(value,field){if(field.ref&&value!=null){const row=references[field.ref]?.rows?.find(x=>x.id===value);if(row)return row.name||row.fullName||row.code||row.username||row.documentNo||String(value);}return format(value,field);}
   const filtered=(data?.content||[]).filter(row=>(active==='all'||row.isActive===(active==='active'))&&(!search||r.fields.some(f=>String(display(row[f.key],f)).toLocaleLowerCase('vi').includes(search.toLocaleLowerCase('vi')))));
   const primary=r.columns.find(k=>['code','name','username','documentNo','lotCode','serialNumber'].includes(k));
+  /**
+   * Xuất đúng các dòng đang hiển thị sau khi lọc trên trang hiện tại. Thêm BOM cho tiếng Việt và chặn chuỗi bị Excel hiểu là công thức; không xuất toàn bộ database.
+   */
   function exportCsv(){const esc=x=>'"'+String(x??'').replaceAll('"','""')+'"';const lines=[r.columns.map(k=>esc(r.fields.find(f=>f.key===k)?.label||k)).join(','),...filtered.map(row=>r.columns.map(k=>{const v=display(row[k],r.fields.find(f=>f.key===k));return esc(/^[=+@\-\t\r]/.test(v)?"'"+v:v);}).join(','))];const url=URL.createObjectURL(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=`${r.key}-trang-${page+1}.csv`;a.click();URL.revokeObjectURL(url);}
   return <><div className="page-heading"><div><div className="eyebrow"><span/>{groups.find(g=>g.key===r.group).label.toUpperCase()}</div><h1>{r.title}<span className="heading-dot">.</span></h1><p>{r.description}</p></div>{r.writeFields.length>0?<button className="primary" onClick={()=>setEditor({})}><Plus size={17}/>Thêm {r.title.toLocaleLowerCase('vi')}</button>:<span className="readonly-label"><Eye size={15}/>Chế độ tra cứu</span>}</div>
     <div className="tabs" aria-label="Các danh mục">{tabs.map(t=><a key={t.key} href={`#${t.key}`} className={t.key===r.key?'selected':''}>{t.title}</a>)}</div>
@@ -101,19 +138,34 @@ function ResourcePage({resource:r,references,onSaved}) {
   </>;
 }
 
+/**
+ * Form tạo/sửa dùng chung cho danh mục được cấp quyền ghi. Giữ nguyên khóa khi sửa, hỗ trợ gợi ý ID liên kết và hiển thị lỗi theo trường từ backend.
+ */
 function Editor({resource:r,row,references,onClose,onSaved}) {
   const editing=r.ids.every(k=>row[k]!=null);
   const [values,setValues]=useState(()=>Object.fromEntries(r.writeFields.map(f=>[f.key,row[f.key]??(f.type==='boolean'?!['trackLot','trackSerial','trackExpiry','allowFractionalQuantity'].includes(f.key):f.key==='minStock'?'0':f.key==='conversionFactor'?'1':'')])));
   const [busy,setBusy]=useState(false),[error,setError]=useState(''),[fieldErrors,setFieldErrors]=useState({});
+  /**
+   * Kiểm tra ID là số nguyên an toàn, đổi ô trống thành null và gửi POST khi tạo hoặc PUT khi sửa. Giữ số thập phân dạng chuỗi khi gửi để tránh làm tròn sớm trong JavaScript.
+   */
   async function submit(e){e.preventDefault();setBusy(true);setError('');setFieldErrors({});try{const body={};for(const f of r.writeFields){let v=values[f.key];if(f.type==='number'&&v!==''){v=Number(v);if(!Number.isSafeInteger(v)||v<1)throw new Error(`${f.label}: ID phải là số nguyên dương trong phạm vi an toàn.`);}body[f.key]=v===''?null:typeof v==='string'?v.trim():v;}await api(`${r.key}${editing?'/'+r.ids.map(k=>row[k]).join('/'):''}`,{method:editing?'PUT':'POST',body:JSON.stringify(body)});onSaved();}catch(e){setError(e.message);setFieldErrors(e.fields||{});}finally{setBusy(false);}}
   return <Modal title={`${editing?'Chỉnh sửa':'Thêm'} ${r.title.toLocaleLowerCase('vi')}`} onClose={busy?undefined:onClose}><form onSubmit={submit}><p className="form-intro">Thông tin rõ ràng giúp việc quản lý dễ dàng hơn. <span>*</span> là bắt buộc.</p>{error&&<div className="error-box" role="alert"><AlertCircle size={18}/><span>{error}</span></div>}<div className="form-grid">{r.writeFields.map(f=><label key={f.key} className={`form-field ${f.type==='boolean'?'checkbox-field':''} ${['address','name','fullName'].includes(f.key)?'wide':''}`}>
     {f.type==='boolean'?<><input type="checkbox" checked={!!values[f.key]} onChange={e=>setValues(v=>({...v,[f.key]:e.target.checked}))}/><span>{f.key==='isActive'?'Đang sử dụng':f.label}</span></>:<><span>{f.label}{f.required&&<b> *</b>}</span><input autoFocus={r.writeFields.indexOf(f)===0} type={f.type==='date'?'date':f.type==='number'||f.type==='decimal'?'number':'text'} step={f.type==='decimal'?'0.000001':f.type==='number'?'1':undefined} min={f.min??(f.type==='number'?1:undefined)} required={f.required} maxLength={f.max} list={f.ref?`ref-${f.key}`:undefined} disabled={editing&&r.ids.includes(f.key)} value={values[f.key]} onChange={e=>setValues(v=>({...v,[f.key]:e.target.value}))} placeholder={f.ref?'Nhập ID hoặc chọn gợi ý':`Nhập ${f.label.toLocaleLowerCase('vi')}`} aria-invalid={!!fieldErrors[f.key]}/>{f.ref&&<><datalist id={`ref-${f.key}`}>{references[f.ref]?.rows?.map(x=><option key={x.id} value={x.id}>{x.code||x.username||x.lotCode||x.serialNumber} · {x.name||x.fullName||''}</option>)}</datalist><small>Chọn theo ID · Gợi ý tối đa 200 bản ghi</small></>}{fieldErrors[f.key]&&<small className="field-error">{fieldErrors[f.key]}</small>}</>}
   </label>)}</div><div className="modal-actions"><button className="secondary" type="button" disabled={busy} onClick={onClose}>Hủy</button><button className="primary" type="submit" disabled={busy}>{busy?<RotateCw className="spin" size={16}/>:<Check size={16}/>} {busy?'Đang lưu…':editing?'Lưu thay đổi':'Tạo mới'}</button></div></form></Modal>;
 }
+/**
+ * Hộp thoại dùng phần tử dialog của trình duyệt: giữ tương tác trong hộp thoại, hỗ trợ Escape và trả focus về nút đã mở. Khi đang lưu có thể khóa thao tác đóng.
+ */
 function Modal({title,onClose,children}) {
   const ref=useRef(null);const closeRef=useRef(onClose);closeRef.current=onClose;
   useEffect(()=>{const previous=document.activeElement;ref.current.showModal();const el=ref.current;const cancel=e=>{e.preventDefault();closeRef.current?.();};el.addEventListener('cancel',cancel);return()=>{el.removeEventListener('cancel',cancel);el.close();previous?.focus();};},[]);
   return <dialog ref={ref} className="modal" aria-label={title}><div className="modal-heading"><h2>{title}</h2><button type="button" className="icon-button" onClick={onClose} disabled={!onClose} aria-label="Đóng hộp thoại"><X size={19}/></button></div>{children}</dialog>;
 }
+/**
+ * Hiển thị thông báo lỗi và nút thử lại nếu có. Thuộc tính role=alert giúp công cụ hỗ trợ đọc màn hình nhận biết lỗi.
+ */
 function ErrorBox({message,retry}) {return <div className="error-box" role="alert"><AlertCircle size={19}/><span>{message}</span>{retry&&<button className="text-button" onClick={retry}>Thử lại</button>}</div>;}
+/**
+ * Nhãn nhỏ biểu diễn trạng thái, quyền cho phép hoặc chiều nhập/xuất. Màu sắc chỉ hỗ trợ nhận biết; nội dung chữ vẫn thể hiện ý nghĩa.
+ */
 function Badge({value,field}) {const bool=typeof value==='boolean';const good=value===true||['POSTED','APPROVED',1].includes(value);const caution=['DRAFT','PENDING'].includes(value);return <span className={`badge ${good?'good':caution?'caution':'neutral'}`}><span/>{bool?(field==='isActive'?(value?'Đang dùng':'Ngừng dùng'):(value?'Cho phép':'Không')):format(value,{key:typeof value==='number'?'direction':''})}</span>;}

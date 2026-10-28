@@ -11,14 +11,32 @@ import vn.truong.warehouse.repository.*;
 import vn.truong.warehouse.mapper.*;
 import vn.truong.warehouse.exception.ResourceNotFoundException;
 
+/**
+ * Xử lý tra cứu chi tiết phiếu. Chỉ cung cấp đọc dữ liệu ở lớp này; không có quy trình duyệt, ghi sổ hoặc tự cập nhật tồn kho.
+ */
 @Service
 @Validated
 @Transactional(readOnly = true)
 public class StockDocumentLineService {
     private final StockDocumentLineRepository repository;
     private final StockDocumentLineMapper mapper;
+    /**
+     * Nhận các thành phần phụ thuộc qua hàm tạo để Spring kết nối lớp này với tầng xử lý bên dưới.
+     */
     public StockDocumentLineService(StockDocumentLineRepository repository, StockDocumentLineMapper mapper) { this.repository = repository; this.mapper = mapper; }
+    /**
+     * Đọc danh sách chi tiết phiếu theo trang và chuyển từng entity thành DTO. Không tải toàn bộ bảng cùng lúc.
+     * @param pageable Thông tin trang, số dòng và thứ tự sắp xếp do bên gọi cung cấp.
+     */
     public Page<StockDocumentLineDto> findAll(Pageable pageable) { return repository.findAll(pageable).map(mapper::toDto); }
+    /**
+     * Tìm chi tiết phiếu bằng khóa và trả DTO; báo không tìm thấy nếu ID không tồn tại.
+     * @param id Khóa của bản ghi; với bảng liên kết có thể là một khóa gồm nhiều thành phần.
+     */
     public StockDocumentLineDto findById(Long id) { return mapper.toDto(require(id)); }
+    /**
+     * Lấy entity chi tiết phiếu cần thao tác; phát sinh ResourceNotFoundException nếu khóa không tồn tại.
+     * @param id Khóa của bản ghi; với bảng liên kết có thể là một khóa gồm nhiều thành phần.
+     */
     private StockDocumentLine require(Long id) { return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("StockDocumentLine", id)); }
 }

@@ -19,6 +19,9 @@ import static org.assertj.core.api.Assertions.*;
 import static org.hamcrest.Matchers.*;
 import java.util.UUID;
 
+/**
+ * Kiểm thử đăng ký, đăng nhập, bảo vệ CSRF, phân quyền và thu hồi phiên. Dùng MySQL phát triển và rollback dữ liệu sau mỗi ca.
+ */
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -29,6 +32,9 @@ class AuthenticationTest {
     @Autowired PasswordEncoder encoder;
     @Autowired ObjectMapper json;
     static final String PASSWORD="Test-password-123!";
+    /**
+     * Tạo tài khoản kiểm thử và kiểm tra client không thể gán ADMIN bằng dữ liệu đăng ký.
+     */
     String register() throws Exception {
         String username="auth-"+UUID.randomUUID();
         mvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON)
@@ -37,6 +43,10 @@ class AuthenticationTest {
             .andExpect(content().string(not(containsString("password"))));
         return username;
     }
+    /**
+     * Lấy token CSRF thật, đăng nhập tài khoản kiểm thử và kiểm tra ID phiên đã được đổi.
+     * @param username Tên đăng nhập cần kiểm tra hoặc tạo mới.
+     */
     MockHttpSession login(String username,String password) throws Exception {
         var token=mvc.perform(get("/api/auth/csrf")).andExpect(status().isOk()).andReturn();
         var session=(MockHttpSession)token.getRequest().getSession();
@@ -48,6 +58,9 @@ class AuthenticationTest {
         assertThat(session.getId()).isNotEqualTo(before);
         return (MockHttpSession)result.getRequest().getSession();
     }
+    /**
+     * Kiểm tra yêu cầu chưa đăng nhập nhận 401, thiếu CSRF nhận 403 và dữ liệu đăng ký sai nhận 400.
+     */
     @Test void unauthenticatedRequestsAndMissingCsrfAreRejected() throws Exception {
         mvc.perform(get("/api/materials")).andExpect(status().isUnauthorized());
         mvc.perform(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON).content("{}"))
@@ -55,6 +68,9 @@ class AuthenticationTest {
         mvc.perform(post("/api/auth/register").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"username\":\"ab\",\"password\":\"short\",\"fullName\":\" \"}"))
             .andExpect(status().isBadRequest());
     }
+    /**
+     * Kiểm tra BCrypt, tên trùng, mật khẩu sai và việc VIEWER không được đọc quản trị hoặc sửa danh mục.
+     */
     @Test void registrationHashesPasswordAndDoesNotAllowPrivilegeEscalation() throws Exception {
         var username=register();var user=users.findByUsername(username).orElseThrow();
         assertThat(user.getPasswordHash()).isNotEqualTo(PASSWORD);assertThat(encoder.matches(PASSWORD,user.getPasswordHash())).isTrue();
@@ -68,6 +84,9 @@ class AuthenticationTest {
         mvc.perform(post("/api/auth/login").with(csrf()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(java.util.Map.of("username",username,"password","wrong-password"))))
             .andExpect(status().isUnauthorized());
     }
+    /**
+     * Kiểm tra chỉ sửa họ tên của chính mình, không nhận quyền từ client và quyền cấp/thu hồi có hiệu lực ở yêu cầu tiếp theo.
+     */
     @Test void profileCanOnlyChangeOwnNameAndRolesRefreshOnEachRequest() throws Exception {
         String username=register();var session=login(username,PASSWORD);
         mvc.perform(put("/api/auth/me").session(session).contentType(MediaType.APPLICATION_JSON).content("{\"fullName\":\"Changed\"}"))
@@ -82,6 +101,9 @@ class AuthenticationTest {
         mvc.perform(get("/api/materials").session(session)).andExpect(status().isForbidden());
         mvc.perform(get("/api/auth/me").session(session)).andExpect(status().isOk());
     }
+    /**
+     * Kiểm tra mật khẩu cũ phải đúng, đổi mật khẩu hủy phiên khác và khóa tài khoản chặn phiên còn sống.
+     */
     @Test void passwordChangeRevokesOtherSessionsAndOldCredentials() throws Exception {
         var username=register();var first=login(username,PASSWORD);var second=login(username,PASSWORD);
         mvc.perform(put("/api/auth/password").session(first).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(json.writeValueAsString(java.util.Map.of("currentPassword","incorrect","newPassword","New-password-123!"))))
@@ -94,6 +116,9 @@ class AuthenticationTest {
         var user=users.findByUsername(username).orElseThrow();user.setIsActive(false);users.saveAndFlush(user);
         mvc.perform(get("/api/auth/me").session(current)).andExpect(status().isUnauthorized());
     }
+    /**
+     * Kiểm tra đăng xuất có CSRF hủy phiên HTTP hiện tại.
+     */
     @Test void logoutClearsSession() throws Exception {
         var username=register();var session=login(username,PASSWORD);
         mvc.perform(post("/api/auth/logout").session(session).with(csrf())).andExpect(status().isOk());

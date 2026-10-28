@@ -62,3 +62,7 @@ Playwright dùng `/usr/bin/chromium`; có thể đặt CHROMIUM_PATH nếu trìn
 +Trên Windows: cài Node.js 24 LTS, mở terminal tại frontend và chạy `npm.cmd ci`, `npm.cmd run dev`; chạy WarehouseApplication bằng JDK 21 trong IntelliJ. Giữ lại cấu hình database của máy bạn. Nếu dùng schema có sẵn và đã tắt Flyway theo hướng dẫn trước đó, chức năng tài khoản không yêu cầu bật lại Flyway hay tạo thêm bảng; cần seed VIEWER trong app_role và mật khẩu người dùng ở dạng BCrypt.
 +
 +Test mới trong auth.spec.js kiểm tra đăng ký, mật khẩu sai, đăng nhập, giữ phiên sau reload, chỉnh hồ sơ, đổi mật khẩu/đăng xuất, quyền VIEWER và form mobile. Các test tạo tài khoản e2e-auth-* với quyền VIEWER, chỉ chạy ở database kiểm thử. Bốn test quản lý cũ cần tài khoản ADMIN kiểm thử được cung cấp qua WAREHOUSE_E2E_USERNAME/WAREHOUSE_E2E_PASSWORD, nếu không chúng được ghi nhận skipped; test không tự cấp ADMIN. Các tài khoản test không phải tài khoản demo để dùng thực tế.
+
+## Hướng dẫn đọc source bằng tiếng Việt
+
+Xem [luồng xử lý, ý nghĩa từng tầng và các thuật ngữ trong source](../docs/HUONG_DAN_DOC_SOURCE.md). Các class/method và hàm giao diện đã có chú thích tiếng Việt ngay trong mã.

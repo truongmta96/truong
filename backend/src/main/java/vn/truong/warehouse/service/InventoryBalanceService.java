@@ -11,14 +11,32 @@ import vn.truong.warehouse.repository.*;
 import vn.truong.warehouse.mapper.*;
 import vn.truong.warehouse.exception.ResourceNotFoundException;
 
+/**
+ * Xử lý tra cứu tồn kho. Chỉ cung cấp đọc dữ liệu ở lớp này; không có quy trình duyệt, ghi sổ hoặc tự cập nhật tồn kho.
+ */
 @Service
 @Validated
 @Transactional(readOnly = true)
 public class InventoryBalanceService {
     private final InventoryBalanceRepository repository;
     private final InventoryBalanceMapper mapper;
+    /**
+     * Nhận các thành phần phụ thuộc qua hàm tạo để Spring kết nối lớp này với tầng xử lý bên dưới.
+     */
     public InventoryBalanceService(InventoryBalanceRepository repository, InventoryBalanceMapper mapper) { this.repository = repository; this.mapper = mapper; }
+    /**
+     * Đọc danh sách tồn kho theo trang và chuyển từng entity thành DTO. Không tải toàn bộ bảng cùng lúc.
+     * @param pageable Thông tin trang, số dòng và thứ tự sắp xếp do bên gọi cung cấp.
+     */
     public Page<InventoryBalanceDto> findAll(Pageable pageable) { return repository.findAll(pageable).map(mapper::toDto); }
+    /**
+     * Tìm tồn kho bằng khóa và trả DTO; báo không tìm thấy nếu ID không tồn tại.
+     * @param id Khóa của bản ghi; với bảng liên kết có thể là một khóa gồm nhiều thành phần.
+     */
     public InventoryBalanceDto findById(Long id) { return mapper.toDto(require(id)); }
+    /**
+     * Lấy entity tồn kho cần thao tác; phát sinh ResourceNotFoundException nếu khóa không tồn tại.
+     * @param id Khóa của bản ghi; với bảng liên kết có thể là một khóa gồm nhiều thành phần.
+     */
     private InventoryBalance require(Long id) { return repository.findById(id).orElseThrow(() -> new ResourceNotFoundException("InventoryBalance", id)); }
 }
