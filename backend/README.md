@@ -33,7 +33,7 @@ Mỗi bảng có Entity, response DTO, Mapper, JpaRepository và Service đọc 
 
 Service có create/update: AppRole, UserRole, UnitOfMeasure, MaterialCategory, Material, MaterialUnit, Supplier, Recipient, MaterialLot, MaterialSerial. Tạo Material khởi tạo InventoryBalance bằng 0 cùng transaction. Khóa ghép được giữ nguyên khi update; create khóa ghép đã có bị từ chối.
 
-Service AppUser, InventoryPolicy, StockDocument, StockDocumentLine, StockLineAllocation, DocumentAction, StockMovement, InventoryBalance, CostAllocation, AuditLog chỉ đọc. Đã có API REST cho giao diện quản lý (xem phần bên dưới). Chưa có xác thực/phân quyền, đăng ký/đổi mật khẩu, quy trình duyệt/ghi sổ hay tính giá. Đây là tầng persistence và service nền tảng, chưa phải hệ thống kho hoàn chỉnh. Repository là API nội bộ; controller chỉ công khai các thao tác được liệt kê; không gọi save trực tiếp để bỏ qua quy trình nghiệp vụ.
+Service AppUser, InventoryPolicy, StockDocument, StockDocumentLine, StockLineAllocation, DocumentAction, StockMovement, InventoryBalance, CostAllocation, AuditLog chỉ đọc. Đã có API REST cho giao diện quản lý (xem phần bên dưới). Đã có đăng ký, đăng nhập, chỉnh hồ sơ và đổi mật khẩu; API kiểm tra quyền truy cập. Chưa có quy trình duyệt/ghi sổ hay tính giá. Đây là tầng persistence và service nền tảng, chưa phải hệ thống kho hoàn chỉnh. Repository là API nội bộ; controller chỉ công khai các thao tác được liệt kê; không gọi save trực tiếp để bỏ qua quy trình nghiệp vụ.
 
 ## Quy tắc mapping
 
@@ -67,19 +67,43 @@ WarehouseIntegrationTest dùng MySQL thật và transaction rollback dữ liệu
 
 ## Phần nghiệp vụ cần triển khai tiếp
 
-Các ghi chú trong SQL về Python/Django là ngữ cảnh tài liệu; backend này triển khai bằng Java. DDL không thực thi nghiệp vụ. Chưa triển khai kiểm tra đơn vị cơ sở/hệ số 1, tổng allocation, flag lô/serial/hạn dùng, chuyển trạng thái, phân quyền, chốt chính sách giá, khóa document/balance theo thứ tự, chống ghi sổ lặp và phân bổ giá vốn. Service ghi sổ sau này cần thực hiện toàn bộ trong một transaction; chỉ mở thao tác ghi cho phiếu/sổ sau khi các điều kiện đó có kiểm thử. Kiểm thử hiện tại không chứng minh quy trình nhập/xuất kho hoàn chỉnh.
+Các ghi chú trong SQL về Python/Django là ngữ cảnh tài liệu; backend này triển khai bằng Java. DDL không thực thi nghiệp vụ. Chưa triển khai kiểm tra đơn vị cơ sở/hệ số 1, tổng allocation, flag lô/serial/hạn dùng, chuyển trạng thái, phân quyền phê duyệt theo từng phiếu, chốt chính sách giá, khóa document/balance theo thứ tự, chống ghi sổ lặp và phân bổ giá vốn. Service ghi sổ sau này cần thực hiện toàn bộ trong một transaction; chỉ mở thao tác ghi cho phiếu/sổ sau khi các điều kiện đó có kiểm thử. Kiểm thử hiện tại không chứng minh quy trình nhập/xuất kho hoàn chỉnh.
 
 ## API phục vụ giao diện
+
+API mặc định chỉ lắng nghe `127.0.0.1:8080`. Đã có xác thực phiên và phân quyền API. Cấu hình hiện tại phục vụ phát triển cục bộ. Không mở bind address ra mạng công cộng. Vite chuyển tiếp `/api` tới backend, không cần mở CORS toàn cục.
+
+- GET `/api/dashboard`: số vật tư, giá trị tồn, phiếu chờ duyệt, tồn dưới ngưỡng và phiếu gần đây từ database.
+- GET `/api/{resource}?page=0&size=20`: phân trang ổn định gồm content, number, totalPages, totalElements; size 1..200, sort theo khóa.
+- GET `/api/{resource}/{id}`: chi tiết. material-units dùng `/{materialId}/{unitId}`; user-roles dùng `/{userId}/{roleId}`.
+- POST `/api/{resource}`, PUT `/api/{resource}/{id}`: áp dụng cho materials, categories, units, material-units, suppliers, recipients, lots, serials.
+- users, roles, user-roles, documents, document-lines, line-allocations, document-actions, balances, movements, cost-allocations, inventory-policies, audit-logs chỉ GET. Không cung cấp DELETE.
+- GET `/api/stock/materials?after=0&limit=20` và `/api/stock/trace/{materialId}` đọc hai view.
+
+Audit API chỉ trả metadata; oldData/newData được bỏ nội dung để tránh công khai dữ liệu nhạy cảm từng được ghi vào JSON. Lỗi trả message và fields (validation) thay vì SQL hoặc exception chi tiết.
+
+`WarehouseApiTest` kiểm tra API tạo/sửa, dữ liệu không hợp lệ, mã trùng, phân trang, bản ghi không tồn tại, endpoint chỉ đọc và lọc audit JSON. Kết hợp với 5 kiểm thử persistence hiện có thành 8 ca tích hợp.
+
+## Đăng nhập và tài khoản
 +
-+API mặc định chỉ lắng nghe `127.0.0.1:8080`. Chưa có đăng nhập/phân quyền; chỉ dùng cục bộ để phát triển. Không mở bind address ra mạng công cộng. Vite chuyển tiếp `/api` tới backend, không cần mở CORS toàn cục.
++Dùng bảng app_user/app_role/user_role hiện có, không cần migration mới. Bảng auth_user của Django không được sử dụng. Seed app_role phải có VIEWER; không có tài khoản ADMIN hoặc mật khẩu mặc định.
 +
-+- GET `/api/dashboard`: số vật tư, giá trị tồn, phiếu chờ duyệt, tồn dưới ngưỡng và phiếu gần đây từ database.
-+- GET `/api/{resource}?page=0&size=20`: phân trang ổn định gồm content, number, totalPages, totalElements; size 1..200, sort theo khóa.
-+- GET `/api/{resource}/{id}`: chi tiết. material-units dùng `/{materialId}/{unitId}`; user-roles dùng `/{userId}/{roleId}`.
-+- POST `/api/{resource}`, PUT `/api/{resource}/{id}`: áp dụng cho materials, categories, units, material-units, suppliers, recipients, lots, serials.
-+- users, roles, user-roles, documents, document-lines, line-allocations, document-actions, balances, movements, cost-allocations, inventory-policies, audit-logs chỉ GET. Không cung cấp DELETE.
-+- GET `/api/stock/materials?after=0&limit=20` và `/api/stock/trace/{materialId}` đọc hai view.
++| Endpoint | Chức năng |
++| --- | --- |
++| GET /api/auth/csrf | Khởi tạo phiên, lấy token và tên header CSRF |
++| POST /api/auth/register | username, fullName, password; tạo tài khoản VIEWER |
++| POST /api/auth/login | username, password; trả hồ sơ và cookie phiên HttpOnly |
++| GET /api/auth/me | Hồ sơ tài khoản đang đăng nhập |
++| PUT /api/auth/me | Chỉ chỉnh fullName của chính mình |
++| PUT /api/auth/password | currentPassword, newPassword; đổi mật khẩu và đăng xuất |
++| POST /api/auth/logout | Hủy phiên và xóa cookie |
 +
-+Audit API chỉ trả metadata; oldData/newData được bỏ nội dung để tránh công khai dữ liệu nhạy cảm từng được ghi vào JSON. Lỗi trả message và fields (validation) thay vì SQL hoặc exception chi tiết.
++Mọi POST/PUT và logout phải gửi header CSRF từ GET /api/auth/csrf, kể cả đăng ký/đăng nhập. Token được làm mới sau đăng nhập/đăng xuất/đổi mật khẩu; frontend tự xử lý. Không lưu token đăng nhập hoặc mật khẩu vào localStorage. Phiên lưu trong bộ nhớ tiến trình backend, hết hạn sau 30 phút không hoạt động; restart backend yêu cầu đăng nhập lại. Redis không bắt buộc cho các chức năng tài khoản.
 +
-+`WarehouseApiTest` kiểm tra API tạo/sửa, dữ liệu không hợp lệ, mã trùng, phân trang, bản ghi không tồn tại, endpoint chỉ đọc và lọc audit JSON. Kết hợp với 5 kiểm thử persistence hiện có thành 8 ca tích hợp.
++Mật khẩu đăng ký mới có ít nhất 12 ký tự và tối đa 72 byte UTF-8, được BCrypt hash với cost 12. Không trim hoặc lưu mật khẩu thô. Hash cũ cần đúng định dạng BCrypt để đăng nhập; không tự chấp nhận mật khẩu thô/hash Django hay tự chuyển đổi. Tên đăng nhập cố định, 3..150 ký tự ASCII chữ/số/chấm/gạch dưới/gạch ngang; chỉ họ tên có thể sửa tại trang tài khoản. Mật khẩu thay đổi làm tất cả phiên cũ hết hiệu lực ở yêu cầu tiếp theo. Tài khoản is_active=false cũng bị từ chối ngay ở yêu cầu tiếp theo.
++
++Quyền đăng ký luôn VIEWER, không nhận role/id/isActive do client truyền. VIEWER/APPROVER có thể đọc dữ liệu kho, CLERK/ADMIN được ghi danh mục hiện có, API users/roles/user-roles/audit-logs chỉ ADMIN. Tài khoản không có vai trò chỉ được quản lý hồ sơ cá nhân. Vai trò được kiểm tra lại từ database mỗi yêu cầu; thay đổi quyền không cần chờ hết phiên. Cấp quyền quản trị là thao tác riêng của người quản lý database; đăng ký công khai không cấp quyền đó.
++
++Cookie mặc định dành cho HTTP cục bộ (HttpOnly, SameSite=Lax). Khi triển khai qua HTTPS đặt WAREHOUSE_COOKIE_SECURE=true. Không dùng cấu hình phát triển làm cấu hình production; cần thêm giới hạn tần suất tại reverse proxy, quản lý bí mật và phương án lưu phiên phù hợp khi chạy nhiều instance. Chưa có quên mật khẩu, xác minh email hoặc màn hình quản trị cấp quyền.
++
++AuthenticationTest có 5 ca tích hợp thực hiện đăng ký/hash/quyền mặc định, CSRF thực, đổi session ID lúc login, cập nhật hồ sơ chỉ chính mình, thay đổi/quyền bị thu hồi, khóa tài khoản và đổi mật khẩu vô hiệu phiên khác. Kết hợp 8 ca API/persistence trước đó thành 13 ca. Các test database được rollback.

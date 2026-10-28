@@ -8,6 +8,8 @@ import jakarta.validation.ConstraintViolationException;
 import java.util.Map;
 @RestControllerAdvice
 public class ApiExceptionHandler {
+    @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
+    public ResponseEntity<?> unauthorized(Exception ex) { return error(401, "Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa."); }
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<?> missing(ResourceNotFoundException ex) { return error(404, "Không tìm thấy bản ghi."); }
     @ExceptionHandler({IllegalArgumentException.class, ConstraintViolationException.class, org.springframework.http.converter.HttpMessageNotReadableException.class, org.springframework.web.method.annotation.MethodArgumentTypeMismatchException.class})

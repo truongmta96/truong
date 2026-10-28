@@ -11,7 +11,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 import static org.hamcrest.Matchers.*;
 import java.util.UUID;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
+@org.springframework.security.test.context.support.WithMockUser(roles="ADMIN")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -20,14 +22,14 @@ class WarehouseApiTest {
     @Autowired JdbcTemplate jdbc;
     @Test void catalogCanBeCreatedEditedAndValidated() throws Exception {
         String code = "API-" + UUID.randomUUID();
-        String response = mvc.perform(post("/api/categories").contentType(MediaType.APPLICATION_JSON).content("{\"code\":\""+code+"\",\"name\":\"Test category\"}"))
+        String response = mvc.perform(post("/api/categories").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"code\":\""+code+"\",\"name\":\"Test category\"}"))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.code").value(code)).andReturn().getResponse().getContentAsString();
         long id = new com.fasterxml.jackson.databind.ObjectMapper().readTree(response).get("id").asLong();
-        mvc.perform(put("/api/categories/"+id).contentType(MediaType.APPLICATION_JSON).content("{\"code\":\""+code+"\",\"name\":\"Updated\"}"))
+        mvc.perform(put("/api/categories/"+id).with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"code\":\""+code+"\",\"name\":\"Updated\"}"))
             .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("Updated"));
-        mvc.perform(post("/api/categories").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mvc.perform(post("/api/categories").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fields.code").exists());
-        mvc.perform(post("/api/categories").contentType(MediaType.APPLICATION_JSON).content("{\"code\":\""+code+"\",\"name\":\"Duplicate\"}"))
+        mvc.perform(post("/api/categories").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{\"code\":\""+code+"\",\"name\":\"Duplicate\"}"))
             .andExpect(status().isConflict()).andExpect(content().string(not(containsString("INSERT"))));
     }
     @Test void pagingMissingResourcesAndReadonlyRoutesAreHandled() throws Exception {
@@ -35,9 +37,9 @@ class WarehouseApiTest {
         mvc.perform(get("/api/materials?page=-1")).andExpect(status().isBadRequest());
         mvc.perform(get("/api/materials/9223372036854775807")).andExpect(status().isNotFound());
         mvc.perform(get("/api/units")).andExpect(status().isOk()).andExpect(jsonPath("$.content",hasSize(greaterThanOrEqualTo(2))));
-        mvc.perform(post("/api/documents").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mvc.perform(post("/api/documents").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isMethodNotAllowed());
-        mvc.perform(post("/api/user-roles").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        mvc.perform(post("/api/user-roles").with(csrf()).contentType(MediaType.APPLICATION_JSON).content("{}"))
             .andExpect(status().isMethodNotAllowed());
         mvc.perform(get("/api/dashboard")).andExpect(status().isOk()).andExpect(jsonPath("$.materials").isNumber());
     }

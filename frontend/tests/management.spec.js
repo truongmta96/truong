@@ -1,5 +1,14 @@
 import {test,expect} from '@playwright/test';
 
+test.beforeEach(async({page})=>{
+ test.skip(!process.env.WAREHOUSE_E2E_USERNAME || !process.env.WAREHOUSE_E2E_PASSWORD, 'Set credentials for a dedicated ADMIN test account.');
+ await page.goto('/');
+ await page.getByLabel('Tên đăng nhập',{exact:true}).fill(process.env.WAREHOUSE_E2E_USERNAME);
+ await page.getByLabel('Mật khẩu',{exact:true}).fill(process.env.WAREHOUSE_E2E_PASSWORD);
+ await page.getByRole('button',{name:'Đăng nhập',exact:true}).last().click();
+ await expect(page.getByRole('heading',{name:'Mọi thứ trong tầm kiểm soát.'})).toBeVisible();
+});
+
 test('overview and all management pages render with real API data',async({page})=>{
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto('/');
