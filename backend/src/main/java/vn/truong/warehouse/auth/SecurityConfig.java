@@ -16,6 +16,7 @@ import vn.truong.warehouse.repository.AppUserRepository;
 /**
  * Thiết lập xác thực bằng phiên và kiểm tra quyền ở backend. VIEWER/APPROVER được đọc dữ liệu kho; CLERK/ADMIN được ghi danh mục; nhóm API quản trị chỉ dành cho ADMIN.
  */
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity
 @Configuration
 public class SecurityConfig {
     /**

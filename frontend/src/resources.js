@@ -1238,7 +1238,7 @@ export const resources = [
     "key": "users",
     "cls": "AppUser",
     "title": "Người dùng",
-    "description": "Tra cứu tài khoản đang sử dụng hệ thống.",
+    "description": "Xem và sửa họ tên, trạng thái của tài khoản không có quyền ADMIN.",
     "group": "admin",
     "columns": [
       "username",
@@ -1278,10 +1278,25 @@ export const resources = [
         "required": false
       }
     ],
-    "writeFields": [],
+    "writeFields": [
+      {
+        "key": "fullName",
+        "label": "Họ và tên",
+        "type": "text",
+        "required": true,
+        "max": 200
+      },
+      {
+        "key": "isActive",
+        "label": "Đang sử dụng",
+        "type": "boolean",
+        "required": true
+      }
+    ],
     "ids": [
       "id"
-    ]
+    ],
+    "editOnly": true
   },
   {
     "key": "roles",

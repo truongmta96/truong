@@ -31,7 +31,7 @@ Vite lắng nghe loopback cổng 5173, chuyển tiếp `/api` tới backend loop
 - Phiếu kho: phiếu, dòng phiếu, phân bổ lô/serial, lịch sử thao tác (tra cứu).
 - Tồn kho: số dư, sổ biến động, phân bổ giá vốn (tra cứu).
 - Lô và serial: tạo, sửa và xem chi tiết.
-- Quản trị: người dùng, vai trò, phân quyền, chính sách kho và audit (tra cứu).
+- Quản trị: xem/sửa tài khoản thường; vai trò, phân quyền, chính sách kho và audit chỉ tra cứu.
 
 Các danh mục hỗ trợ thêm/sửa với form validation, gợi ý khóa ngoại theo ID, xem chi tiết, phân trang, tìm/lọc **trên trang hiện tại** và xuất **trang hiện tại** ra CSV. Gợi ý liên kết tối đa 200 bản ghi; có thể nhập ID hợp lệ không có trong gợi ý. Không có hard delete. CSV vô hiệu hóa công thức trong dữ liệu chuỗi. Thời gian DATETIME được hiểu là UTC và hiển thị ở Asia/Ho_Chi_Minh.
 
@@ -66,3 +66,11 @@ Playwright dùng `/usr/bin/chromium`; có thể đặt CHROMIUM_PATH nếu trìn
 ## Hướng dẫn đọc source bằng tiếng Việt
 
 Xem [luồng xử lý, ý nghĩa từng tầng và các thuật ngữ trong source](../docs/HUONG_DAN_DOC_SOURCE.md). Các class/method và hàm giao diện đã có chú thích tiếng Việt ngay trong mã.
+
+## Sửa tài khoản người dùng khác
+
+Đăng nhập ADMIN → Quản trị → Người dùng → bấm biểu tượng bút ở tài khoản cần sửa. Form chỉ có họ tên và ô Đang sử dụng. Bỏ chọn ô này để khóa; chọn lại để mở tài khoản. Không có nút tạo mới ở trang này.
+
+Các tài khoản có quyền ADMIN được backend loại khỏi danh sách và chặn truy cập chi tiết/cập nhật qua ID. Hồ sơ ADMIN của chính bạn vẫn sửa tại avatar → Tài khoản cá nhân. Tên đăng nhập, mật khẩu và vai trò của người khác không thay đổi tại form quản trị.
+
+admin-accounts.spec.js kiểm tra form với API giả lập, không cần tài khoản ADMIN thực hoặc thay đổi đặc quyền trong database. Phần bảo vệ quyền thực tế được kiểm tra trên MySQL bằng AdminAccountTest.

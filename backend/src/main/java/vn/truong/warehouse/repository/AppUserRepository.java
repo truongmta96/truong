@@ -12,4 +12,13 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long>, JpaSpec
      * @param username Tên đăng nhập cần kiểm tra hoặc tạo mới.
      */
     java.util.Optional<AppUser> findByUsername(String username);
+
+    /** Đọc danh sách tài khoản không có vai trò ADMIN, lọc tại database để phân trang chính xác. */
+    @Query("select u from AppUser u where not exists (select ur.userId from UserRole ur, AppRole r where ur.userId=u.id and ur.roleId=r.id and r.code='ADMIN')")
+    org.springframework.data.domain.Page<AppUser> findNonAdmins(org.springframework.data.domain.Pageable pageable);
+
+    /** Khóa tài khoản khi sửa; luồng cấp quyền trong tương lai cần dùng cùng giao thức khóa này. */
+    @Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("select u from AppUser u where u.id=:id")
+    java.util.Optional<AppUser> findForUpdate(@org.springframework.data.repository.query.Param("id") Long id);
 }

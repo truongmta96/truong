@@ -77,7 +77,7 @@ API mặc định chỉ lắng nghe `127.0.0.1:8080`. Đã có xác thực phiê
 - GET `/api/{resource}?page=0&size=20`: phân trang ổn định gồm content, number, totalPages, totalElements; size 1..200, sort theo khóa.
 - GET `/api/{resource}/{id}`: chi tiết. material-units dùng `/{materialId}/{unitId}`; user-roles dùng `/{userId}/{roleId}`.
 - POST `/api/{resource}`, PUT `/api/{resource}/{id}`: áp dụng cho materials, categories, units, material-units, suppliers, recipients, lots, serials.
-- users, roles, user-roles, documents, document-lines, line-allocations, document-actions, balances, movements, cost-allocations, inventory-policies, audit-logs chỉ GET. Không cung cấp DELETE.
+- roles, user-roles, documents, document-lines, line-allocations, document-actions, balances, movements, cost-allocations, inventory-policies, audit-logs chỉ GET. Không cung cấp DELETE.
 - GET `/api/stock/materials?after=0&limit=20` và `/api/stock/trace/{materialId}` đọc hai view.
 
 Audit API chỉ trả metadata; oldData/newData được bỏ nội dung để tránh công khai dữ liệu nhạy cảm từng được ghi vào JSON. Lỗi trả message và fields (validation) thay vì SQL hoặc exception chi tiết.
@@ -111,3 +111,13 @@ Audit API chỉ trả metadata; oldData/newData được bỏ nội dung để t
 ## Hướng dẫn đọc source bằng tiếng Việt
 
 Xem [luồng xử lý, ý nghĩa từng tầng và các thuật ngữ trong source](../docs/HUONG_DAN_DOC_SOURCE.md). Các class/method và hàm giao diện đã có chú thích tiếng Việt ngay trong mã.
+
+## ADMIN quản lý tài khoản thường
+
+Trong Quản trị → Người dùng, ADMIN được đọc danh sách/chi tiết và sửa **họ tên, trạng thái hoạt động** của tài khoản không có vai trò ADMIN. API GET /api/users lọc ADMIN ngay trong database để số trang và tổng bản ghi đúng; GET/PUT /api/users/{id} kiểm tra lại tài khoản đích và trả 403 nếu có vai trò ADMIN, kể cả tài khoản bị khóa hoặc có nhiều vai trò.
+
+PUT nhận `{"fullName":"Họ tên mới","isActive":true}`. Không cho đổi username, mật khẩu hoặc vai trò ở API này. Không có POST tạo tài khoản quản trị hoặc DELETE. Các tài khoản ADMIN (bao gồm chính mình) không nằm trong danh sách này; mỗi người sửa hồ sơ của mình tại /api/auth/me. Tài khoản VIEWER/CLERK/APPROVER không được dùng API quản trị tài khoản.
+
+AdminAccountService được bảo vệ thêm bằng kiểm tra quyền tại method; khi sửa có khóa dòng và transaction. Các luồng cấp quyền trong tương lai cần khóa cùng dòng user trước khi đổi vai trò để phối hợp với giao thức này. Bộ lọc phiên hiện có sẽ chặn tài khoản bị khóa ở yêu cầu kế tiếp. Không cần migration mới.
+
+AdminAccountTest bổ sung 5 ca trên MySQL với dữ liệu rollback, kiểm tra quyền, tài khoản ADMIN được bảo vệ, chống ghi vượt trường cho phép, validation/CSRF và khóa phiên. Tổng bộ test backend hiện có 18 ca.

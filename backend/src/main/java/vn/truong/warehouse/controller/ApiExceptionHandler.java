@@ -14,6 +14,9 @@ public class ApiExceptionHandler {
     /**
      * Trả HTTP 401 với thông báo chung cho đăng nhập sai hoặc tài khoản bị khóa; không tiết lộ tài khoản nào tồn tại.
      */
+    /** Trả HTTP 403 khi quản trị viên cố truy cập tài khoản ADMIN được bảo vệ. */
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<?> denied(Exception ex) { return error(403, "Bạn không được xem hoặc chỉnh sửa tài khoản ADMIN tại đây."); }
     @ExceptionHandler(org.springframework.security.core.AuthenticationException.class)
     public ResponseEntity<?> unauthorized(Exception ex) { return error(401, "Tên đăng nhập hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa."); }
     /**
